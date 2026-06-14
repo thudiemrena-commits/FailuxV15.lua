@@ -1394,31 +1394,8 @@ Btn1.MouseButton1Down:Connect(function()
         startTrackingAll()
         Btn1.Text = "Chức năng 1: ON"
         Btn1.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-    else
-        stopTrackingAll()
-        Btn1.Text = "Chức năng 1: OFF"
-        Btn1.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-    end
-end)
 
--- NÚT BẤM SỐ 2
-local Btn2 = Instance.new("TextButton")
-Btn2.Size = UDim2.new(0.9, 0, 0, 35)
-Btn2.Position = UDim2.new(0.05, 0, 0.65, 0)
-Btn2.Text = "Chức năng 2: OFF"
-Btn2.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-Btn2.TextColor3 = Color3.fromRGB(255, 255, 255)
-Btn2.Font = Enum.Font.SourceSansBold
-Btn2.TextSize = 14
-Btn2.Parent = MainFrame
 
-Btn2.MouseButton1Down:Connect(function()
-    Feature2_Active = not Feature2_Active
-    if Feature2_Active then
-        Btn2.Text = "Chức năng 2: ON"
-        Btn2.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
-    else
-        Btn2.Text = "Chức năng 2: OFF"
-        Btn2.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
-    end
-end)
+
+
+
