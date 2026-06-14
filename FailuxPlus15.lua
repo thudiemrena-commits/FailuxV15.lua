@@ -1233,3 +1233,192 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 end)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Các biến quản lý trạng thái chức năng
+local Feature1_Active = false
+local Feature2_Active = false
+local trackedBoxes = {} -- Lưu danh sách các khối vuông đỏ đang bám theo người chơi khác
+
+-----------------------------------------------------------
+-- HÀM TOÁN HỌC: KIỂM TRA BẠN CÓ NẰM TRONG KHỐI VUÔNG KHÔNG
+-----------------------------------------------------------
+local function isPointInBox(point, boxCFrame, boxSize)
+    local rPos = boxCFrame:PointToObjectSpace(point) -- Chuyển về hệ tọa độ của khối vuông
+    return math.abs(rPos.X) <= boxSize.X/2
+       and math.abs(rPos.Y) <= boxSize.Y/2
+       and math.abs(rPos.Z) <= boxSize.Z/2
+end
+
+-----------------------------------------------------------
+-- LOGIC CHỨC NĂNG 1: TẠO KHỐI VUÔNG ĐỎ KHỔNG LỒ (18x18x18)
+-----------------------------------------------------------
+local function createBoxForPlayer(player)
+    if player == LocalPlayer then return end -- Không tự ghim chính mình
+
+    local function setupBox(character)
+        local rootPart = character:WaitForChild("HumanoidRootPart", 10)
+        if not rootPart then return end
+
+        -- Xóa khối vuông cũ của người này nếu có để tránh bị trùng
+        if trackedBoxes[player.Name] then
+            pcall(function() trackedBoxes[player.Name]:Destroy() end)
+        end
+
+        -- ĐÃ TĂNG THÊM 8 SỐ: Kích thước mới là 18 mét mỗi chiều để né sạch hoàn toàn Hitbox
+        local box = Instance.new("Part")
+        box.Name = "GhimBox_" .. player.Name
+        box.Size = Vector3.new(18, 18, 18) 
+        box.Color = Color3.fromRGB(255, 0, 0) -- Màu đỏ
+        box.Transparency = 0.6 -- Độ invis vừa phải nhìn xuyên qua được
+        box.CanCollide = false -- Bạn không va chạm vật lý với khối (đi xuyên qua được)
+        box.Anchored = true
+        box.Parent = workspace
+
+        -- Vòng lặp liên tục bắt khối vuông bám sát theo, giữ player ở chính giữa tâm
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            if Feature1_Active and character and rootPart and rootPart.Parent then
+                box.CFrame = rootPart.CFrame
+            else
+                pcall(function() box:Destroy() end)
+                connection:Disconnect()
+            end
+        end)
+
+        trackedBoxes[player.Name] = box
+    end
+
+    -- Kích hoạt ghim khi player đã có character hoặc vừa hồi sinh
+    if player.Character then task.spawn(setupBox, player.Character) end
+    player.CharacterAdded:Connect(setupBox)
+end
+
+-- Bật ghim toàn bộ server
+local function startTrackingAll()
+    Feature1_Active = true
+    for _, player in ipairs(Players:GetPlayers()) do
+        createBoxForPlayer(player)
+    end
+end
+
+-- Tắt ghim toàn bộ server
+local function stopTrackingAll()
+    Feature1_Active = false
+    for name, box in pairs(trackedBoxes) do
+        pcall(function() box:Destroy() end)
+    end
+    table.clear(trackedBoxes)
+end
+
+-- Tự động ghim người chơi mới vào phòng khi đang bật chức năng
+Players.PlayerAdded:Connect(function(player)
+    if Feature1_Active then createBoxForPlayer(player) end
+end)
+
+-----------------------------------------------------------
+-- LOGIC CHỨC NĂNG 2: KIỂM TRA CHẠM KHỐI VÀ TELEPORT -30M
+-----------------------------------------------------------
+RunService.Heartbeat:Connect(function()
+    if not Feature2_Active then return end
+    if not LocalPlayer.Character then return end
+    local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+
+    local myPos = myRoot.Position
+
+    -- Quét qua tất cả khối vuông đang quản lý trên server
+    for _, box in pairs(trackedBoxes) do
+        if box and box.Parent then
+            -- Nếu phát hiện tọa độ của bạn nằm trong hoặc chạm vào khối vuông đỏ khổng lồ
+            if isPointInBox(myPos, box.CFrame, box.Size) then
+                -- Lập tức dịch chuyển bạn thẳng xuống lòng đất 30 mét
+                myRoot.CFrame = myRoot.CFrame * CFrame.new(0, -30, 0)
+                break -- Thoát vòng lặp quét để tránh giật lag
+            end
+        end
+    end
+end)
+
+
+-- =========================================================
+-- ĐÃ CHỈNH MENU SANG PHẢI MÀN HÌNH - GIỮ NGUYÊN KIỂU VIỀN ĐỎ
+-- =========================================================
+if PlayerGui:FindFirstChild("DeltaMenuTest") then
+    PlayerGui.DeltaMenuTest:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DeltaMenuTest"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 220, 0, 140)
+
+-- CHỈNH TỌA ĐỘ VỊ TRÍ GÓC BÊN PHẢI (0.7, 0) ĐỂ KHÔNG CHE LOADING SCRIPT
+MainFrame.Position = UDim2.new(0.7, 0, 0.4, 0) 
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0) -- Giữ nguyên viền đỏ
+MainFrame.Active = true
+MainFrame.Draggable = true -- Vẫn giữ chuột/tay vào nền để kéo đi bình thường
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "MENU TEST - MO CO ME"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 14
+Title.Parent = MainFrame
+
+-- NÚT BẤM SỐ 1
+local Btn1 = Instance.new("TextButton")
+Btn1.Size = UDim2.new(0.9, 0, 0, 35)
+Btn1.Position = UDim2.new(0.05, 0, 0.3, 0)
+Btn1.Text = "Chức năng 1: OFF"
+Btn1.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+Btn1.TextColor3 = Color3.fromRGB(255, 255, 255)
+Btn1.Font = Enum.Font.SourceSansBold
+Btn1.TextSize = 14
+Btn1.Parent = MainFrame
+
+Btn1.MouseButton1Down:Connect(function()
+    if not Feature1_Active then
+        startTrackingAll()
+        Btn1.Text = "Chức năng 1: ON"
+        Btn1.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+    else
+        stopTrackingAll()
+        Btn1.Text = "Chức năng 1: OFF"
+        Btn1.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    end
+end)
+
+-- NÚT BẤM SỐ 2
+local Btn2 = Instance.new("TextButton")
+Btn2.Size = UDim2.new(0.9, 0, 0, 35)
+Btn2.Position = UDim2.new(0.05, 0, 0.65, 0)
+Btn2.Text = "Chức năng 2: OFF"
+Btn2.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+Btn2.TextColor3 = Color3.fromRGB(255, 255, 255)
+Btn2.Font = Enum.Font.SourceSansBold
+Btn2.TextSize = 14
+Btn2.Parent = MainFrame
+
+Btn2.MouseButton1Down:Connect(function()
+    Feature2_Active = not Feature2_Active
+    if Feature2_Active then
+        Btn2.Text = "Chức năng 2: ON"
+        Btn2.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+    else
+        Btn2.Text = "Chức năng 2: OFF"
+        Btn2.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    end
+end)
