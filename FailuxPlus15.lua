@@ -1234,10 +1234,9 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 -- ========================================================
--- TÍCH HỢP HỆ THỐNG NÉ PLAYER ĐỜI CŨ (18x18x18 & SỤT ĐẤT -30M)
+-- BẢN NÉ ĐỜI MỚI CHUẨN 100% - ĐÃ VÁ LỖI CÚ PHÁP CONSOLE
 -- ========================================================
 task.spawn(function()
-    -- Tự cô lập biến tránh xung đột với script chính bên trên
     local _Players = game:GetService("Players")
     local _RunService = game:GetService("RunService")
     local _LocalPlayer = _Players.LocalPlayer
@@ -1245,93 +1244,167 @@ task.spawn(function()
 
     local Feature1_Active = false
     local Feature2_Active = false
-    local trackedBoxes = {}
+    local trackedBoxes = {}   
+    local trackedLines = {}   
+    local lineInsideTimers = {}
 
-    -- Hàm toán học quét không gian
     local function isPointInBox(point, boxCFrame, boxSize)
-        local rPos = boxCFrame:PointToObjectSpace(point)
+        local rPos = boxCFrame:Inverse() * point
         return math.abs(rPos.X) <= boxSize.X/2
            and math.abs(rPos.Y) <= boxSize.Y/2
            and math.abs(rPos.Z) <= boxSize.Z/2
     end
 
-    -- Hàm tạo khối đỏ khổng lồ (Kích thước 18x18x18 chuẩn của bạn)
-    local function createBoxForPlayer(player)
+    local function safeTeleport(rootPart, distance)
+        if not rootPart then return end
+        local humanoid = _LocalPlayer.Character and _LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        
+        rootPart.CFrame = rootPart.CFrame * CFrame.new(0, -distance, 0)
+        task.wait(0.12)
+        
+        if humanoid and (humanoid.PlatformStand or humanoid:GetState() == Enum.HumanoidStateType.Physics) or rootPart.AssemblyLinearVelocity.Magnitude < 1 then
+            rootPart.CFrame = rootPart.CFrame * CFrame.new(0, -20, 0)
+        end
+    end
+
+    local function createAssetsForPlayer(player)
         if player == _LocalPlayer then return end
-
-        local function setupBox(character)
+        
+        local function setupVisuals(character)
             local rootPart = character:WaitForChild("HumanoidRootPart", 10)
-            if not rootPart then return end
-
-            if trackedBoxes[player.Name] then
-                pcall(function() trackedBoxes[player.Name]:Destroy() end)
+            local humanoid = character:WaitForChild("Humanoid", 10)
+            if not rootPart or not humanoid then return end
+            
+            if trackedBoxes[player.Name] then 
+                pcall(function() trackedBoxes[player.Name].Box:Destroy() end) 
+            end
+            if trackedLines[player.Name] then
+                pcall(function() trackedLines[player.Name]:Destroy() end)
             end
 
             local box = Instance.new("Part")
             box.Name = "GhimBox_" .. player.Name
-            box.Size = Vector3.new(18, 18, 18) 
+            box.Size = Vector3.new(18, 18, 28) 
             box.Color = Color3.fromRGB(255, 0, 0)
             box.Transparency = 0.6
             box.CanCollide = false
             box.Anchored = true
             box.Parent = workspace
 
+            local line = Instance.new("Part")
+            line.Name = "GhimLine_" .. player.Name
+            line.Size = Vector3.new(3, 0.2, 60)
+            line.CanCollide = false
+            line.Anchored = true
+            line.Parent = workspace
+
             local connection
             connection = _RunService.Heartbeat:Connect(function()
-                if Feature1_Active and character and rootPart and rootPart.Parent then
-                    box.CFrame = rootPart.CFrame
+                if Feature1_Active and character and character.Parent and rootPart and rootPart.Parent and humanoid and humanoid.Health > 0 then
+                    box.CFrame = rootPart.CFrame * CFrame.new(0, 0, -5)
+                    line.CFrame = rootPart.CFrame * CFrame.new(0, -rootPart.Size.Y/2, -30)
+                    
+                    if humanoid.Health >= 400 then
+                        line.Color = Color3.fromRGB(0, 0, 255)
+                        line.Transparency = 0.5
+                    else
+                        line.Color = Color3.fromRGB(255, 215, 0)
+                        line.Transparency = 0.5
+                    end
                 else
                     pcall(function() box:Destroy() end)
-                    connection:Disconnect()
+                    pcall(function() line:Destroy() end)
+                    if connection then connection:Disconnect() end
                 end
             end)
-
-            trackedBoxes[player.Name] = box
+            
+            trackedBoxes[player.Name] = {Box = box, Humanoid = humanoid}
+            trackedLines[player.Name] = line
         end
-
-        if player.Character then task.spawn(setupBox, player.Character) end
-        player.CharacterAdded:Connect(setupBox)
+        
+        if player.Character then task.spawn(setupVisuals, player.Character) end
+        player.CharacterAdded:Connect(setupVisuals)
     end
 
     local function startTrackingAll()
         Feature1_Active = true
-        for _, player in ipairs(_Players:GetPlayers()) do
-            createBoxForPlayer(player)
+        for _, player in ipairs(_Players:GetPlayers()) do 
+            createAssetsForPlayer(player) 
         end
     end
 
     local function stopTrackingAll()
         Feature1_Active = false
-        for name, box in pairs(trackedBoxes) do
-            pcall(function() box:Destroy() end)
+        for name, data in pairs(trackedBoxes) do
+            pcall(function() data.Box:Destroy() end)
+        end
+        for name, line in pairs(trackedLines) do
+            pcall(function() line:Destroy() end)
         end
         table.clear(trackedBoxes)
+        table.clear(trackedLines)
+        table.clear(lineInsideTimers)
     end
 
     _Players.PlayerAdded:Connect(function(player)
-        if Feature1_Active then createBoxForPlayer(player) end
+        if Feature1_Active then createAssetsForPlayer(player) end
     end)
 
-    -- Vòng lặp quét va chạm và thực hiện sụt đất -30m ẩn bên trong hộp chạy ngầm
-    _RunService.Heartbeat:Connect(function()
-        if not Feature2_Active then return end
-        if not _LocalPlayer.Character then return end
-        local myRoot = _LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not myRoot then return end
-
-        local myPos = myRoot.Position
-
-        for _, box in pairs(trackedBoxes) do
-            if box and box.Parent then
-                if isPointInBox(myPos, box.CFrame, box.Size) then
-                    myRoot.CFrame = myRoot.CFrame * CFrame.new(0, -30, 0)
-                    break
+    task.spawn(function()
+        while true do
+            task.wait(5)
+            if Feature1_Active then
+                for _, player in ipairs(_Players:GetPlayers()) do
+                    if player ~= _LocalPlayer and (not trackedBoxes[player.Name] or not trackedBoxes[player.Name].Box.Parent) then
+                        createAssetsForPlayer(player)
+                    end
                 end
             end
         end
     end)
 
-    -- KHỞI TẠO MENU RIÊNG (ĐÃ DI CHUYỂN SANG PHẢI MÀN HÌNH)
+    _RunService.Heartbeat:Connect(function()
+        if not Feature2_Active then return end
+        if not _LocalPlayer.Character or not _LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+        
+        local myRoot = _LocalPlayer.Character.HumanoidRootPart
+        local myPos = myRoot.Position
+
+        -- 1. Né khối đỏ
+        for name, data in pairs(trackedBoxes) do
+            local box = data.Box
+            local enemyHumanoid = data.Humanoid
+            if box and box.Parent and enemyHumanoid and enemyHumanoid.Health > 100 then
+                if isPointInBox(myPos, box.CFrame, box.Size) then
+                    safeTeleport(myRoot, 50)
+                    break
+                end
+            end
+        end
+
+        -- 2. Né laze kẹt tường
+        for name, line in pairs(trackedLines) do
+            if line and line.Parent and line.Transparency < 1 then
+                local data = trackedBoxes[name]
+                if data and data.Humanoid and data.Humanoid.Health >= 400 then
+                    if isPointInBox(myPos, line.CFrame, line.Size) then
+                        lineInsideTimers[name] = (lineInsideTimers[name] or 0) + 0.016
+                        if lineInsideTimers[name] >= 2.5 then
+                            lineInsideTimers[name] = 0
+                            safeTeleport(myRoot, 60)
+                            break
+                        end
+                    else
+                        lineInsideTimers[name] = 0
+                    end
+                else
+                    lineInsideTimers[name] = 0
+                end
+            end
+        end
+    end)
+
+    -- TẠO MENU GIAO DIỆN GÓC PHẢI
     if _PlayerGui:FindFirstChild("DeltaMenuTest") then
         _PlayerGui.DeltaMenuTest:Destroy()
     end
@@ -1404,6 +1477,9 @@ task.spawn(function()
         end
     end)
 end)
+
+
+
 
 			
 
