@@ -1233,6 +1233,177 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 end)
+-- ========================================================
+-- TÍCH HỢP HỆ THỐNG NÉ PLAYER ĐỜI CŨ (18x18x18 & SỤT ĐẤT -30M)
+-- ========================================================
+task.spawn(function()
+    -- Tự cô lập biến tránh xung đột với script chính bên trên
+    local _Players = game:GetService("Players")
+    local _RunService = game:GetService("RunService")
+    local _LocalPlayer = _Players.LocalPlayer
+    local _PlayerGui = _LocalPlayer:WaitForChild("PlayerGui")
+
+    local Feature1_Active = false
+    local Feature2_Active = false
+    local trackedBoxes = {}
+
+    -- Hàm toán học quét không gian
+    local function isPointInBox(point, boxCFrame, boxSize)
+        local rPos = boxCFrame:PointToObjectSpace(point)
+        return math.abs(rPos.X) <= boxSize.X/2
+           and math.abs(rPos.Y) <= boxSize.Y/2
+           and math.abs(rPos.Z) <= boxSize.Z/2
+    end
+
+    -- Hàm tạo khối đỏ khổng lồ (Kích thước 18x18x18 chuẩn của bạn)
+    local function createBoxForPlayer(player)
+        if player == _LocalPlayer then return end
+
+        local function setupBox(character)
+            local rootPart = character:WaitForChild("HumanoidRootPart", 10)
+            if not rootPart then return end
+
+            if trackedBoxes[player.Name] then
+                pcall(function() trackedBoxes[player.Name]:Destroy() end)
+            end
+
+            local box = Instance.new("Part")
+            box.Name = "GhimBox_" .. player.Name
+            box.Size = Vector3.new(18, 18, 18) 
+            box.Color = Color3.fromRGB(255, 0, 0)
+            box.Transparency = 0.6
+            box.CanCollide = false
+            box.Anchored = true
+            box.Parent = workspace
+
+            local connection
+            connection = _RunService.Heartbeat:Connect(function()
+                if Feature1_Active and character and rootPart and rootPart.Parent then
+                    box.CFrame = rootPart.CFrame
+                else
+                    pcall(function() box:Destroy() end)
+                    connection:Disconnect()
+                end
+            end)
+
+            trackedBoxes[player.Name] = box
+        end
+
+        if player.Character then task.spawn(setupBox, player.Character) end
+        player.CharacterAdded:Connect(setupBox)
+    end
+
+    local function startTrackingAll()
+        Feature1_Active = true
+        for _, player in ipairs(_Players:GetPlayers()) do
+            createBoxForPlayer(player)
+        end
+    end
+
+    local function stopTrackingAll()
+        Feature1_Active = false
+        for name, box in pairs(trackedBoxes) do
+            pcall(function() box:Destroy() end)
+        end
+        table.clear(trackedBoxes)
+    end
+
+    _Players.PlayerAdded:Connect(function(player)
+        if Feature1_Active then createBoxForPlayer(player) end
+    end)
+
+    -- Vòng lặp quét va chạm và thực hiện sụt đất -30m ẩn bên trong hộp chạy ngầm
+    _RunService.Heartbeat:Connect(function()
+        if not Feature2_Active then return end
+        if not _LocalPlayer.Character then return end
+        local myRoot = _LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not myRoot then return end
+
+        local myPos = myRoot.Position
+
+        for _, box in pairs(trackedBoxes) do
+            if box and box.Parent then
+                if isPointInBox(myPos, box.CFrame, box.Size) then
+                    myRoot.CFrame = myRoot.CFrame * CFrame.new(0, -30, 0)
+                    break
+                end
+            end
+        end
+    end)
+
+    -- KHỞI TẠO MENU RIÊNG (ĐÃ DI CHUYỂN SANG PHẢI MÀN HÌNH)
+    if _PlayerGui:FindFirstChild("DeltaMenuTest") then
+        _PlayerGui.DeltaMenuTest:Destroy()
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "DeltaMenuTest"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = _PlayerGui
+
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 220, 0, 140)
+    MainFrame.Position = UDim2.new(0.7, 0, 0.4, 0) 
+    MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    MainFrame.BorderSizePixel = 2
+    MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0)
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    MainFrame.Parent = ScreenGui
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.Text = "MENU TEST - MO CO ME"
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextSize = 14
+    Title.Parent = MainFrame
+
+    local Btn1 = Instance.new("TextButton")
+    Btn1.Size = UDim2.new(0.9, 0, 0, 35)
+    Btn1.Position = UDim2.new(0.05, 0, 0.3, 0)
+    Btn1.Text = "Chức năng 1: OFF"
+    Btn1.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    Btn1.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn1.Font = Enum.Font.SourceSansBold
+    Btn1.TextSize = 14
+    Btn1.Parent = MainFrame
+
+    Btn1.MouseButton1Down:Connect(function()
+        if not Feature1_Active then
+            startTrackingAll()
+            Btn1.Text = "Chức năng 1: ON"
+            Btn1.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        else
+            stopTrackingAll()
+            Btn1.Text = "Chức năng 1: OFF"
+            Btn1.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+        end
+    end)
+
+    local Btn2 = Instance.new("TextButton")
+    Btn2.Size = UDim2.new(0.9, 0, 0, 35)
+    Btn2.Position = UDim2.new(0.05, 0, 0.65, 0)
+    Btn2.Text = "Chức năng 2: OFF"
+    Btn2.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+    Btn2.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn2.Font = Enum.Font.SourceSansBold
+    Btn2.TextSize = 14
+    Btn2.Parent = MainFrame
+
+    Btn2.MouseButton1Down:Connect(function()
+        Feature2_Active = not Feature2_Active
+        if Feature2_Active then
+            Btn2.Text = "Chức năng 2: ON"
+            Btn2.BackgroundColor3 = Color3.fromRGB(50, 150, 50)
+        else
+            Btn2.Text = "Chức năng 2: OFF"
+            Btn2.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+        end
+    end)
+end)
 
 			
 
