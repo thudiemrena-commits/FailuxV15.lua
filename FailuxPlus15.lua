@@ -696,3 +696,540 @@ ScreenGui.Destroying:Connect(function()
     FOVCircle:Destroy()
     CenterDot:Destroy()
 end)
+--!strict
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local Mouse = LocalPlayer:GetMouse()
+
+--------------------------------------------------------------------------------
+-- Cấu hình màu sắc và thuộc tính
+--------------------------------------------------------------------------------
+local MENU_BG_COLOR = Color3.fromRGB(15, 15, 15)
+local MENU_BORDER_COLOR = Color3.fromRGB(138, 43, 226) -- Tím hoàng gia
+local TEXT_COLOR = Color3.fromRGB(240, 240, 240)
+local BUTTON_COLOR = Color3.fromRGB(30, 30, 30)
+
+-- Biến lưu trữ trạng thái vị trí
+local savedPosition: Vector3? = nil
+local savedVisualPart: Part? = nil
+local shieldPosition: Vector3? = nil
+local shieldVisualPart: Part? = nil
+
+-- Trạng thái logic cho các Nút
+local shieldActive = false
+local shieldArmed = false 
+local clickToSaveActive = false -- Nút 4
+local clickToTrackActive = false -- Nút 5
+
+--------------------------------------------------------------------------------
+-- Giao diện người dùng (UI Creation)
+--------------------------------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CustomMenuGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+-- Khung Menu chính
+local MainMenu = Instance.new("Frame")
+MainMenu.Name = "MainMenu"
+MainMenu.Size = UDim2.new(0, 420, 0, 125)
+MainMenu.Position = UDim2.new(0.5, -210, 0.4, -62)
+MainMenu.BackgroundColor3 = MENU_BG_COLOR
+MainMenu.BorderSizePixel = 0
+MainMenu.Active = true
+MainMenu.Parent = ScreenGui
+
+local MenuStroke = Instance.new("UIStroke")
+MenuStroke.Color = MENU_BORDER_COLOR
+MenuStroke.Thickness = 2
+MenuStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+MenuStroke.Parent = MainMenu
+
+-- Khung chứa Nút số 4 và Nút số 5 (Tab nhỏ ở trên)
+local TopButtonContainer = Instance.new("Frame")
+TopButtonContainer.Name = "TopButtonContainer"
+TopButtonContainer.Size = UDim2.new(1, -20, 0, 35)
+TopButtonContainer.Position = UDim2.new(0, 10, 0, 10)
+TopButtonContainer.BackgroundTransparency = 1
+TopButtonContainer.Parent = MainMenu
+
+local TopUIListLayout = Instance.new("UIListLayout")
+TopUIListLayout.FillDirection = Enum.FillDirection.Horizontal
+TopUIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+TopUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TopUIListLayout.Padding = UDim.new(0, 10)
+TopUIListLayout.Parent = TopButtonContainer
+
+-- Khung chứa 3 nút cũ (Phía dưới)
+local ButtonContainer = Instance.new("Frame")
+ButtonContainer.Name = "ButtonContainer"
+ButtonContainer.Size = UDim2.new(1, -20, 0, 40)
+ButtonContainer.Position = UDim2.new(0, 10, 0, 52)
+ButtonContainer.BackgroundTransparency = 1
+ButtonContainer.Parent = MainMenu
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 15)
+UIListLayout.Parent = ButtonContainer
+
+-- Thanh kéo Menu ở dưới cùng (Drag Bar)
+local DragBar = Instance.new("Frame")
+DragBar.Name = "DragBar"
+DragBar.Size = UDim2.new(1, 0, 0, 15)
+DragBar.Position = UDim2.new(0, 0, 1, -15)
+DragBar.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+DragBar.BorderSizePixel = 0
+DragBar.Parent = MainMenu
+
+local DragStroke = Instance.new("UIStroke")
+DragStroke.Color = MENU_BORDER_COLOR
+DragStroke.Thickness = 1
+DragStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+DragStroke.Parent = DragBar
+
+local DragLabel = Instance.new("TextLabel")
+DragLabel.Size = UDim2.new(1, 0, 1, 0)
+DragLabel.BackgroundTransparency = 1
+DragLabel.Text = "=== GIỮ ĐỂ KÉO MENU ==="
+DragLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
+DragLabel.TextSize = 10
+DragLabel.Font = Enum.Font.SourceSansBold
+DragLabel.Parent = DragBar
+
+--------------------------------------------------------------------------------
+-- Tính năng kéo thả Menu (Drag System)
+--------------------------------------------------------------------------------
+local dragging = false
+local dragInput: InputObject? = nil
+local dragStart: Vector3 = Vector3.new()
+local startPos = UDim2.new()
+
+DragBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = MainMenu.Position
+		
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+DragBar.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput and dragging then
+		local delta = input.Position - dragStart
+		MainMenu.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- Hàm tạo Vòng tròn Phát sáng
+--------------------------------------------------------------------------------
+local function createVisualRing(position: Vector3, color: Color3): Part
+	local part = Instance.new("Part")
+	part.Shape = Enum.PartType.Cylinder
+	part.Size = Vector3.new(0.1, 6, 6) 
+	part.Color = color
+	part.Material = Enum.Material.Neon 
+	part.Transparency = 0.3
+	part.Anchored = true
+	part.CanCollide = false
+	part.CFrame = CFrame.new(position) * CFrame.Angles(0, 0, math.rad(90))
+	part.Parent = workspace
+	return part
+end
+
+local function cleanSavedPoint()
+	if savedVisualPart then savedVisualPart:Destroy(); savedVisualPart = nil end
+	savedPosition = nil
+end
+
+local function cleanShieldPoint()
+	if shieldVisualPart then shieldVisualPart:Destroy(); shieldVisualPart = nil end
+	shieldPosition = nil
+	shieldActive = false
+	shieldArmed = false
+end
+
+--------------------------------------------------------------------------------
+-- Hàm di chuyển mượt mà (Anti-Cheat Bypass Teleport)
+--------------------------------------------------------------------------------
+local function safeTeleportTo(targetPosition: Vector3)
+	local character = LocalPlayer.Character
+	if not character then return end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
+
+	local currentPosition = rootPart.Position
+	local targetPosAdjusted = Vector3.new(targetPosition.X, targetPosition.Y + 3, targetPosition.Z)
+	local distance = (targetPosAdjusted - currentPosition).Magnitude
+	if distance < 1 then return end
+
+	local speed = math.clamp(50 + (distance / 10), 50, 80)
+	local duration = distance / speed
+
+	local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+	local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = CFrame.new(targetPosAdjusted)})
+	
+	tween:Play()
+end
+
+--------------------------------------------------------------------------------
+-- Tạo các nút bấm chức năng (Hàng dưới)
+--------------------------------------------------------------------------------
+local function createMenuButton(name: string, text: string, layoutOrder: number)
+	local button = Instance.new("TextButton")
+	button.Name = name
+	button.Size = UDim2.new(0, 120, 1, 0)
+	button.BackgroundColor3 = BUTTON_COLOR
+	button.Text = text
+	button.TextColor3 = TEXT_COLOR
+	button.TextSize = 14
+	button.Font = Enum.Font.SourceSansBold
+	button.LayoutOrder = layoutOrder
+	button.Parent = ButtonContainer
+
+	local buttonCorner = Instance.new("UICorner")
+	buttonCorner.CornerRadius = UDim.new(0, 12)
+	buttonCorner.Parent = button
+
+	local buttonStroke = Instance.new("UIStroke")
+	buttonStroke.Color = MENU_BORDER_COLOR
+	buttonStroke.Thickness = 1
+	buttonStroke.Parent = button
+	
+	return button
+end
+
+local btn1 = createMenuButton("Btn1", "Lưu Vị Trí", 1)
+local btn2 = createMenuButton("Btn2", "Xóa Vị Trí", 2)
+local btn3 = createMenuButton("Btn3", "Vòng Bảo Vệ", 3)
+
+-- TẠO NÚT SỐ 4 (Nằm ở Tab trên - Chiều ngang chia đôi)
+local btn4 = Instance.new("TextButton")
+btn4.Name = "Btn4"
+btn4.Size = UDim2.new(0, 195, 1, 0)
+btn4.BackgroundColor3 = BUTTON_COLOR
+btn4.Text = "Lưu Điểm Qua Block"
+btn4.TextColor3 = TEXT_COLOR
+btn4.TextSize = 12
+btn4.Font = Enum.Font.SourceSansBold
+btn4.LayoutOrder = 1
+btn4.Parent = TopButtonContainer
+
+local btn4Corner = Instance.new("UICorner")
+btn4Corner.CornerRadius = UDim.new(0, 10)
+btn4Corner.Parent = btn4
+
+local btn4Stroke = Instance.new("UIStroke")
+btn4Stroke.Thickness = 2
+btn4Stroke.Parent = btn4
+
+-- TẠO NÚT SỐ 5 (Nằm ở Tab trên cạnh nút 4)
+local btn5 = Instance.new("TextButton")
+btn5.Name = "Btn5"
+btn5.Size = UDim2.new(0, 195, 1, 0)
+btn5.BackgroundColor3 = BUTTON_COLOR
+btn5.Text = "Ghim Người Chơi"
+btn5.TextColor3 = TEXT_COLOR
+btn5.TextSize = 12
+btn5.Font = Enum.Font.SourceSansBold
+btn5.LayoutOrder = 2
+btn5.Parent = TopButtonContainer
+
+local btn5Corner = Instance.new("UICorner")
+btn5Corner.CornerRadius = UDim.new(0, 10)
+btn5Corner.Parent = btn5
+
+local btn5Stroke = Instance.new("UIStroke")
+btn5Stroke.Thickness = 2
+btn5Stroke.Parent = btn5
+
+--------------------------------------------------------------------------------
+-- Hiệu ứng Đổi Màu Viền Đồng Bộ (Chroma cho cả Nút 4 và Nút 5)
+--------------------------------------------------------------------------------
+task.spawn(function()
+	local colors = {
+		Color3.fromRGB(138, 43, 226),
+		Color3.fromRGB(0, 255, 0),   
+		Color3.fromRGB(0, 0, 255),   
+		Color3.fromRGB(255, 0, 0)    
+	}
+	local currentIndex = 1
+	while true do
+		local nextIndex = currentIndex % #colors + 1
+		local startColor = colors[currentIndex]
+		local endColor = colors[nextIndex]
+		for t = 0, 1, 0.02 do
+			local lerpedColor = startColor:Lerp(endColor, t)
+			btn4Stroke.Color = lerpedColor
+			btn5Stroke.Color = lerpedColor
+			task.wait(0.03)
+		end
+		currentIndex = nextIndex
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- Xử lý Logic Nút bấm UI
+--------------------------------------------------------------------------------
+
+-- NÚT 4: Chọn lưu qua Click Block
+btn4.MouseButton1Click:Connect(function()
+	clickToSaveActive = not clickToSaveActive
+	clickToTrackActive = false -- Tắt chế độ nút 5 nếu đang bật
+	btn5.Text = "Ghim Người Chơi"
+	btn5.BackgroundColor3 = BUTTON_COLOR
+	
+	if clickToSaveActive then
+		btn4.Text = "Click Vào Khối Block..."
+		btn4.BackgroundColor3 = Color3.fromRGB(45, 20, 20)
+	else
+		btn4.Text = "Lưu Điểm Qua Block"
+		btn4.BackgroundColor3 = BUTTON_COLOR
+	end
+end)
+
+-- NÚT 5: Chọn lưu qua Ghim người chơi khác
+btn5.MouseButton1Click:Connect(function()
+	clickToTrackActive = not clickToTrackActive
+	clickToSaveActive = false -- Tắt chế độ nút 4 nếu đang bật
+	btn4.Text = "Lưu Điểm Qua Block"
+	btn4.BackgroundColor3 = BUTTON_COLOR
+	
+	if clickToTrackActive then
+		btn5.Text = "Click Vào Người Chơi..."
+		btn5.BackgroundColor3 = Color3.fromRGB(45, 20, 20)
+	else
+		btn5.Text = "Ghim Người Chơi"
+		btn5.BackgroundColor3 = BUTTON_COLOR
+	end
+end)
+
+-- Sự kiện Click chuột xử lý cả Chức năng 4 và Chức năng 5
+Mouse.Button1Down:Connect(function()
+	local target = Mouse.Target
+	if not target then return end
+
+	-- CHỨC NĂNG 4: Lưu vị trí block
+	if clickToSaveActive then
+		local targetPosition = Mouse.Hit.Position
+		cleanSavedPoint()
+		savedPosition = targetPosition
+		savedVisualPart = createVisualRing(savedPosition, Color3.fromRGB(0, 255, 0))
+		btn1.Text = "Bay Về Điểm Lưu"
+		clickToSaveActive = false
+		btn4.Text = "Lưu Thành Công!"
+		btn4.BackgroundColor3 = BUTTON_COLOR
+		task.wait(1.5)
+		btn4.Text = "Lưu Điểm Qua Block"
+	
+	-- CHỨC NĂNG 5: Ghim người chơi (Chỉ phản hồi khi click trúng nhân vật người khác)
+	elseif clickToTrackActive then
+		local character = target:FindFirstAncestorOfClass("Model")
+		if character and character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("Humanoid") then
+			local clickedPlayer = Players:GetPlayerFromCharacter(character)
+			if clickedPlayer and clickedPlayer ~= LocalPlayer then
+				
+				cleanSavedPoint() -- Xóa điểm cũ
+				
+				-- Ghi nhớ và theo dõi vị trí người chơi này
+				savedPosition = character.HumanoidRootPart.Position
+				savedVisualPart = createVisualRing(savedPosition, Color3.fromRGB(0, 255, 255)) -- Vòng màu xanh dương lam phát sáng dưới chân họ
+				btn1.Text = "Bay Tới Người Ghim"
+				
+				clickToTrackActive = false
+				btn5.Text = "Ghim Thành Công!"
+				btn5.BackgroundColor3 = BUTTON_COLOR
+				
+				-- Tạo luồng cập nhật vòng tròn theo chân người bị ghim liên tục
+				task.spawn(function()
+					while savedPosition and character and character:FindFirstChild("HumanoidRootPart") and savedVisualPart do
+						savedPosition = character.HumanoidRootPart.Position - Vector3.new(0, 2.8, 0)
+						savedVisualPart.CFrame = CFrame.new(savedPosition) * CFrame.Angles(0, 0, math.rad(90))
+						task.wait()
+					end
+				end)
+				
+				task.wait(1.5)
+				btn5.Text = "Ghim Người Chơi"
+			end
+		end
+	end
+end)
+
+-- NÚT 1: Dịch chuyển mượt đến Vị trí đã lưu (Block hoặc Người chơi bị ghim)
+btn1.MouseButton1Click:Connect(function()
+	local character = LocalPlayer.Character
+	if not character then return end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then return end
+
+	if not savedPosition then
+		savedPosition = rootPart.Position - Vector3.new(0, 2.8, 0)
+		savedVisualPart = createVisualRing(savedPosition, Color3.fromRGB(0, 255, 0))
+		btn1.Text = "Bay Về Điểm Lưu"
+	else
+		safeTeleportTo(savedPosition)
+	end
+end)
+
+-- NÚT 2: Xóa toàn bộ dữ liệu vị trí cũ
+btn2.MouseButton1Click:Connect(function()
+	cleanSavedPoint()
+	cleanShieldPoint()
+	btn1.Text = "Lưu Vị Trí"
+	btn3.Text = "Vòng Bảo Vệ"
+end)
+
+-- NÚT 3: Vòng bảo vệ tím tại chỗ
+btn3.MouseButton1Click:Connect(function()
+	if not savedPosition then 
+		btn3.Text = "Cần Lưu Vị Trí Trước!"
+		task.wait(1.5)
+		btn3.Text = "Vòng Bảo Vệ"
+		return 
+	end
+
+	local character = LocalPlayer.Character
+	if not character then return end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then return end
+
+	cleanShieldPoint()
+	shieldPosition = rootPart.Position - Vector3.new(0, 2.8, 0)
+	shieldVisualPart = createVisualRing(shieldPosition, Color3.fromRGB(148, 0, 211))
+	shieldActive = true
+	shieldArmed = false
+	btn3.Text = "Bảo Vệ: Chờ Rời Đi"
+end)
+
+--------------------------------------------------------------------------------
+-- HỆ THỐNG ESP NGƯỜI CHƠI > 300 HP
+--------------------------------------------------------------------------------
+local function applyESP(player: Player)
+	if player == LocalPlayer then return end
+
+	local function onCharacterAdded(character)
+		local humanoid = character:WaitForChild("Humanoid", 5) :: Humanoid?
+		local rootPart = character:WaitForChild("HumanoidRootPart", 5) :: Part?
+		if not humanoid or not rootPart then return end
+
+		local highlight = character:FindFirstChild("ESPHighlight") :: Highlight?
+		if not highlight then
+			highlight = Instance.new("Highlight")
+			highlight.Name = "ESPHighlight"
+			highlight.FillColor = Color3.fromRGB(255, 0, 0) 
+			highlight.FillTransparency = 0.5 
+			highlight.OutlineColor = Color3.fromRGB(255, 255, 255) 
+			highlight.OutlineTransparency = 0
+			highlight.Adornee = character
+			highlight.Enabled = false 
+			highlight.Parent = character
+		end
+
+		local connection
+		connection = RunService.Heartbeat:Connect(function()
+			if not character:IsDescendantOf(workspace) or not humanoid or humanoid.Health <= 0 then
+				if connection then connection:Disconnect() end
+				return
+			end
+
+			if humanoid.Health >= 300 or humanoid.MaxHealth >= 300 then
+				if highlight then highlight.Enabled = true end
+			else
+				if highlight then highlight.Enabled = false end
+			end
+		end)
+	end
+
+	if player.Character then task.spawn(onCharacterAdded, player.Character) end
+	player.CharacterAdded:Connect(onCharacterAdded)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do applyESP(player) end
+Players.PlayerAdded:Connect(applyESP)
+
+--------------------------------------------------------------------------------
+-- HỆ THỐNG TỰ ĐỘNG CHỐNG CHẾT (Auto Panic Escape ngầm)
+--------------------------------------------------------------------------------
+RunService.Heartbeat:Connect(function()
+	local character = LocalPlayer.Character
+	if not character then return end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
+
+	-- ĐIỀU KIỆN 1: Máu bản thân lọt xuống dưới mức 40 HP
+	if humanoid.Health < 40 then
+		-- Quét tìm xem có Killer nào ở gần không
+		for _, otherPlayer in ipairs(Players:GetPlayers()) do
+			if otherPlayer ~= LocalPlayer and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") and otherPlayer.Character:FindFirstChild("Humanoid") then
+				local otherHumanoid = otherPlayer.Character.Humanoid
+				local otherRoot = otherPlayer.Character.HumanoidRootPart
+				
+				-- Kiểm tra xem mục tiêu có phải Killer (>300 HP) không
+				if otherHumanoid.Health >= 300 or otherHumanoid.MaxHealth >= 300 then
+					local distance = (rootPart.Position - otherRoot.Position).Magnitude
+					
+					-- ĐIỀU KIỆN 2: Khoảng cách giữa Killer và bạn nhỏ hơn 10 mét
+					if distance <= 10 then
+						-- LẬP TỨC TELEPORT BẠN XUỐNG DƯỚI LÒNG ĐẤT 20M ĐỂ KHỞI ĐỘNG LỖI GAME
+						rootPart.CFrame = rootPart.CFrame * CFrame.new(0, -20, 0)
+						break
+					end
+				end
+			end
+		end
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- Hệ thống Vòng lặp Kiểm duyệt cho Vòng Bảo Vệ
+--------------------------------------------------------------------------------
+RunService.Heartbeat:Connect(function()
+	if not shieldActive or not shieldPosition or not savedPosition then return end
+	
+	local character = LocalPlayer.Character
+	if not character then return end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then return end
+
+	local distanceToShield = (rootPart.Position - Vector3.new(shieldPosition.X, rootPart.Position.Y, shieldPosition.Z)).Magnitude
+
+	if not shieldArmed then
+		if distanceToShield > 5 then
+			shieldArmed = true
+			btn3.Text = "Bảo Vệ: ĐANG BẬT"
+		end
+	else
+		if distanceToShield <= 3.5 then
+			shieldActive = false
+			btn3.Text = "AN TOÀN! ĐANG BAY..."
+			
+			safeTeleportTo(savedPosition)
+			
+			task.wait(0.5)
+			cleanShieldPoint()
+			btn3.Text = "Vòng Bảo Vệ"
+		end
+	end
+end)
