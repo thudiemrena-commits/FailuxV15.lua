@@ -1233,6 +1233,11 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 end)
+
+			
+-- =========================================================
+-- CHỨC NĂNG BẢO VỆ 
+-- =========================================================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
