@@ -701,13 +701,58 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local Mouse = LocalPlayer:GetMouse()
 
 --------------------------------------------------------------------------------
--- Cấu hình màu sắc và thuộc tính
+-- HỆ THỐNG ĐỢI 8 GIÂY & CHỮ CHROME "meomeostaylike" CHI TIẾT
+--------------------------------------------------------------------------------
+local IntroGui = Instance.new("ScreenGui")
+IntroGui.Name = "MeomeoIntroGui"
+IntroGui.ResetOnSpawn = false
+
+-- Đưa vào CoreGui để chống bị xóa nhầm, nếu lỗi tự động chuyển về PlayerGui
+pcall(function()
+	IntroGui.Parent = CoreGui
+end)
+if not IntroGui.Parent then
+	IntroGui.Parent = PlayerGui
+end
+
+local TextLabel = Instance.new("TextLabel")
+TextLabel.Size = UDim2.new(0, 400, 0, 50)
+TextLabel.Position = UDim2.new(0.5, -200, 0, 30) -- Giữa phía trên màn hình
+TextLabel.BackgroundTransparency = 1
+TextLabel.Text = "meomeostaylike"
+TextLabel.Font = Enum.Font.FredokaOne -- Font chữ bo tròn đẹp mắt
+TextLabel.TextSize = 38
+TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextLabel.TextStrokeTransparency = 0.3 -- Viền ngoài giúp chữ nổi bật
+TextLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+TextLabel.Parent = IntroGui
+
+-- Tạo kết nối đổi màu RGB liên tục
+local rgbConnection: RBXScriptConnection? = nil
+rgbConnection = RunService.RenderStepped:Connect(function()
+	local hue = (tick() % 3) / 3 -- Chu kỳ đổi màu mượt mà
+	TextLabel.TextColor3 = Color3.fromHSV(hue, 0.9, 1)
+end)
+
+-- Đóng băng xử lý chính trong vòng 8 giây theo yêu cầu
+task.wait(8)
+
+-- Dọn dẹp Intro Text sau khi hết 8 giây
+if rgbConnection then 
+	rgbConnection:Disconnect() 
+	rgbConnection = nil 
+end
+IntroGui:Destroy()
+
+--------------------------------------------------------------------------------
+-- Cấu hình màu sắc và thuộc tính (BẮT ĐẦU CHẠY MENU CHÍNH CHỨC NĂNG)
 --------------------------------------------------------------------------------
 local MENU_BG_COLOR = Color3.fromRGB(15, 15, 15)
 local MENU_BORDER_COLOR = Color3.fromRGB(138, 43, 226) -- Tím hoàng gia
@@ -874,7 +919,7 @@ end
 local function safeTeleportTo(targetPosition: Vector3)
 	local character = LocalPlayer.Character
 	if not character then return end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part?
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
 
@@ -995,7 +1040,7 @@ end)
 -- NÚT 4: Chọn lưu qua Click Block
 btn4.MouseButton1Click:Connect(function()
 	clickToSaveActive = not clickToSaveActive
-	clickToTrackActive = false -- Tắt chế độ nút 5 nếu đang bật
+	clickToTrackActive = false 
 	btn5.Text = "Ghim Người Chơi"
 	btn5.BackgroundColor3 = BUTTON_COLOR
 	
@@ -1011,7 +1056,7 @@ end)
 -- NÚT 5: Chọn lưu qua Ghim người chơi khác
 btn5.MouseButton1Click:Connect(function()
 	clickToTrackActive = not clickToTrackActive
-	clickToSaveActive = false -- Tắt chế độ nút 4 nếu đang bật
+	clickToSaveActive = false 
 	btn4.Text = "Lưu Điểm Qua Block"
 	btn4.BackgroundColor3 = BUTTON_COLOR
 	
@@ -1042,29 +1087,30 @@ Mouse.Button1Down:Connect(function()
 		task.wait(1.5)
 		btn4.Text = "Lưu Điểm Qua Block"
 	
-	-- CHỨC NĂNG 5: Ghim người chơi (Chỉ phản hồi khi click trúng nhân vật người khác)
+	-- CHỨC NĂNG 5: Ghim người chơi
 	elseif clickToTrackActive then
 		local character = target:FindFirstAncestorOfClass("Model")
 		if character and character:FindFirstChild("HumanoidRootPart") and character:FindFirstChild("Humanoid") then
 			local clickedPlayer = Players:GetPlayerFromCharacter(character)
 			if clickedPlayer and clickedPlayer ~= LocalPlayer then
 				
-				cleanSavedPoint() -- Xóa điểm cũ
+				cleanSavedPoint() 
 				
-				-- Ghi nhớ và theo dõi vị trí người chơi này
 				savedPosition = character.HumanoidRootPart.Position
-				savedVisualPart = createVisualRing(savedPosition, Color3.fromRGB(0, 255, 255)) -- Vòng màu xanh dương lam phát sáng dưới chân họ
+				savedVisualPart = createVisualRing(savedPosition, Color3.fromRGB(0, 255, 255)) 
 				btn1.Text = "Bay Tới Người Ghim"
 				
 				clickToTrackActive = false
 				btn5.Text = "Ghim Thành Công!"
 				btn5.BackgroundColor3 = BUTTON_COLOR
 				
-				-- Tạo luồng cập nhật vòng tròn theo chân người bị ghim liên tục
 				task.spawn(function()
 					while savedPosition and character and character:FindFirstChild("HumanoidRootPart") and savedVisualPart do
-						savedPosition = character.HumanoidRootPart.Position - Vector3.new(0, 2.8, 0)
-						savedVisualPart.CFrame = CFrame.new(savedPosition) * CFrame.Angles(0, 0, math.rad(90))
+						local hrp = character:FindFirstChild("HumanoidRootPart") :: Part?
+						if hrp then
+							savedPosition = hrp.Position - Vector3.new(0, 2.8, 0)
+							savedVisualPart.CFrame = CFrame.new(savedPosition) * CFrame.Angles(0, 0, math.rad(90))
+						end
 						task.wait()
 					end
 				end)
@@ -1076,11 +1122,11 @@ Mouse.Button1Down:Connect(function()
 	end
 end)
 
--- NÚT 1: Dịch chuyển mượt đến Vị trí đã lưu (Block hoặc Người chơi bị ghim)
+-- NÚT 1: Dịch chuyển mượt đến Vị trí đã lưu
 btn1.MouseButton1Click:Connect(function()
 	local character = LocalPlayer.Character
 	if not character then return end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part?
 	if not rootPart then return end
 
 	if not savedPosition then
@@ -1111,7 +1157,7 @@ btn3.MouseButton1Click:Connect(function()
 
 	local character = LocalPlayer.Character
 	if not character then return end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part?
 	if not rootPart then return end
 
 	cleanShieldPoint()
@@ -1174,25 +1220,19 @@ Players.PlayerAdded:Connect(applyESP)
 RunService.Heartbeat:Connect(function()
 	local character = LocalPlayer.Character
 	if not character then return end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part?
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not rootPart or not humanoid or humanoid.Health <= 0 then return end
 
-	-- ĐIỀU KIỆN 1: Máu bản thân lọt xuống dưới mức 40 HP
 	if humanoid.Health < 40 then
-		-- Quét tìm xem có Killer nào ở gần không
 		for _, otherPlayer in ipairs(Players:GetPlayers()) do
 			if otherPlayer ~= LocalPlayer and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") and otherPlayer.Character:FindFirstChild("Humanoid") then
 				local otherHumanoid = otherPlayer.Character.Humanoid
-				local otherRoot = otherPlayer.Character.HumanoidRootPart
+				local otherRoot = otherPlayer.Character.HumanoidRootPart :: Part?
 				
-				-- Kiểm tra xem mục tiêu có phải Killer (>300 HP) không
-				if otherHumanoid.Health >= 300 or otherHumanoid.MaxHealth >= 300 then
+				if otherRoot and (otherHumanoid.Health >= 300 or otherHumanoid.MaxHealth >= 300) then
 					local distance = (rootPart.Position - otherRoot.Position).Magnitude
-					
-					-- ĐIỀU KIỆN 2: Khoảng cách giữa Killer và bạn nhỏ hơn 10 mét
 					if distance <= 10 then
-						-- LẬP TỨC TELEPORT BẠN XUỐNG DƯỚI LÒNG ĐẤT 20M ĐỂ KHỞI ĐỘNG LỖI GAME
 						rootPart.CFrame = rootPart.CFrame * CFrame.new(0, -20, 0)
 						break
 					end
@@ -1210,7 +1250,7 @@ RunService.Heartbeat:Connect(function()
 	
 	local character = LocalPlayer.Character
 	if not character then return end
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	local rootPart = character:FindFirstChild("HumanoidRootPart") :: Part?
 	if not rootPart then return end
 
 	local distanceToShield = (rootPart.Position - Vector3.new(shieldPosition.X, rootPart.Position.Y, shieldPosition.Z)).Magnitude
@@ -1233,6 +1273,7 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 end)
+
 -- ========================================================
 -- BẢN NÉ ĐỜI MỚI CHUẨN 100% - ĐÃ VÁ LỖI CÚ PHÁP CONSOLE
 -- ========================================================
