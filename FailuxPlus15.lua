@@ -1477,6 +1477,195 @@ task.spawn(function()
         end
     end)
 end)
+-- CẤU HÌNH LINK
+local UrlKeyGithub = "https://raw.githubusercontent.com/thudiemrena-commits/Key/main/KeyFailuxV15.lua"
+local LinkTikTok = "https://vt.tiktok.com/ZSQsR9efL/"
+
+-- Tạo ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ResetOnSpawn = false
+
+-- Bản GUI nền đen che hết màn hình (ĐỂ ẨN TRƯỚC BẰNG VISIBLE = FALSE)
+local BackgroundBlack = Instance.new("Frame", ScreenGui)
+BackgroundBlack.Size = UDim2.new(1, 0, 1, 0)
+BackgroundBlack.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+BackgroundBlack.BackgroundTransparency = 0.15
+BackgroundBlack.Visible = false -- Ẩn đi để nhường chỗ cho loading chạy trước
+
+----------------------------------------------------------------
+-- CÁC BIẾN CĂN CHỈNH KÍCH THƯỚC (Để bạn dễ tinh chỉnh nếu cần)
+----------------------------------------------------------------
+local LeftWidth = 0.45   -- Chiều rộng phần bên trái (45% màn hình)
+local RightWidth = 0.45  -- Chiều rộng phần bên phải (45% màn hình)
+local BoxHeight = 50     -- Chiều cao của mỗi hộp bên phải
+local Space = 15         -- Khoảng cách giữa các hộp
+
+-- Chiều cao tổng cộng của 3 hộp bên phải + khoảng cách = Chiều cao hộp bên trái
+local TotalRightHeight = (BoxHeight * 3) + (Space * 2)
+
+----------------------------------------------------------------
+-- BÊN TRÁI: Khung nhận key sát góc trái
+----------------------------------------------------------------
+local LeftContainer = Instance.new("Frame", BackgroundBlack)
+LeftContainer.Size = UDim2.new(LeftWidth, 0, 0, TotalRightHeight)
+LeftContainer.Position = UDim2.new(0, 0, 0.5, 0) -- Sát lề trái (X = 0)
+LeftContainer.AnchorPoint = Vector2.new(0, 0.5)  -- Căn giữa theo chiều dọc
+LeftContainer.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+LeftContainer.BorderSizePixel = 0
+
+-- Viền đổi màu cho khung trái
+local LeftStroke = Instance.new("UIStroke", LeftContainer)
+LeftStroke.Thickness = 2
+
+-- Nội dung bên trong khung trái
+local TextSource = Instance.new("TextLabel", LeftContainer)
+TextSource.Text = "Receive key code from meomeo"
+TextSource.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextSource.Size = UDim2.new(1, -20, 0, 30)
+TextSource.Position = UDim2.new(0, 10, 0, 10)
+TextSource.BackgroundTransparency = 1
+TextSource.TextSize = 16
+TextSource.Font = Enum.Font.SourceSansBold
+
+local GetBtn = Instance.new("TextButton", LeftContainer)
+GetBtn.Text = "LẤY KEY TẠI ĐÂY"
+GetBtn.Size = UDim2.new(0.8, 0, 0, 35)
+GetBtn.Position = UDim2.new(0.1, 0, 0, 50)
+GetBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 50)
+GetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+GetBtn.Font = Enum.Font.SourceSansBold
+Instance.new("UICorner", GetBtn)
+
+GetBtn.MouseButton1Click:Connect(function()
+    setclipboard(LinkTikTok)
+end)
+
+local NoteText = Instance.new("TextLabel", LeftContainer)
+NoteText.Text = "xin vui lòng nhận key bằng nhắn tin"
+NoteText.TextColor3 = Color3.fromRGB(0, 255, 100)
+NoteText.Position = UDim2.new(0, 10, 0, 100)
+NoteText.Size = UDim2.new(1, -20, 0, 30)
+NoteText.BackgroundTransparency = 1
+NoteText.TextSize = 14
+
+----------------------------------------------------------------
+-- BÊN PHẢI: 3 hình chữ nhật xếp chồng sát góc phải
+----------------------------------------------------------------
+local StartY = 0.5 
+
+-- 1. Hộp TRÊN CÙNG (Info)
+local TopBox = Instance.new("Frame", BackgroundBlack)
+TopBox.Size = UDim2.new(RightWidth, 0, 0, BoxHeight)
+TopBox.Position = UDim2.new(1, 0, StartY, -(BoxHeight/2) - BoxHeight - Space)
+TopBox.AnchorPoint = Vector2.new(1, 0.5) -- Sát lề phải (X = 1)
+TopBox.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+TopBox.BorderSizePixel = 0
+
+local TitleTiktok = Instance.new("TextLabel", TopBox)
+TitleTiktok.Text = "(Info tiktok): mẹomèostaylike"
+TitleTiktok.Size = UDim2.new(1, 0, 1, 0)
+TitleTiktok.BackgroundTransparency = 1
+TitleTiktok.Font = Enum.Font.SourceSansBold
+TitleTiktok.TextSize = 20
+
+-- 2. Hộp GIỮA (Nhập Key)
+local MiddleBox = Instance.new("Frame", BackgroundBlack)
+MiddleBox.Size = UDim2.new(RightWidth, 0, 0, BoxHeight)
+MiddleBox.Position = UDim2.new(1, 0, StartY, 0)
+MiddleBox.AnchorPoint = Vector2.new(1, 0.5)
+MiddleBox.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MiddleBox.BorderSizePixel = 0
+
+local TextBox = Instance.new("TextBox", MiddleBox)
+TextBox.PlaceholderText = "Nhập Key vào đây và ấn Enter..."
+TextBox.Size = UDim2.new(0.9, 0, 0, 35)
+TextBox.Position = UDim2.new(0.05, 0, 0.5, 0)
+TextBox.AnchorPoint = Vector2.new(0, 0.5)
+TextBox.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.TextSize = 16
+TextBox.Text = ""
+
+-- 3. Hộp DƯỚI CÙNG (Xác thực)
+local BottomBox = Instance.new("Frame", BackgroundBlack)
+BottomBox.Size = UDim2.new(RightWidth, 0, 0, BoxHeight)
+BottomBox.Position = UDim2.new(1, 0, StartY, (BoxHeight/2) + BoxHeight + Space)
+BottomBox.AnchorPoint = Vector2.new(1, 0.5)
+BottomBox.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+BottomBox.BorderSizePixel = 0
+
+local StatusLabel = Instance.new("TextLabel", BottomBox)
+StatusLabel.Text = "Chưa nhập mã xác thực"
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusLabel.Size = UDim2.new(1, 0, 1, 0)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Font = Enum.Font.SourceSansBold
+StatusLabel.TextSize = 16
+
+-- Thêm viền đổi màu cho cả 3 hộp bên phải
+local TopStroke = Instance.new("UIStroke", TopBox)
+local MidStroke = Instance.new("UIStroke", MiddleBox)
+local BotStroke = Instance.new("UIStroke", BottomBox)
+TopStroke.Thickness = 2
+MidStroke.Thickness = 2
+BotStroke.Thickness = 2
+
+----------------------------------------------------------------
+-- VÒNG LẶP ĐỔI MÀU RAINBOW (RGB) CHO TẤT CẢ CÁC VIỀN VÀ CHỮ INFO
+----------------------------------------------------------------
+task.spawn(function()
+    while task.wait() do
+        local hue = tick() % 5 / 5
+        local color = Color3.fromHSV(hue, 1, 1)
+        
+        LeftStroke.Color = color
+        TopStroke.Color = color
+        MidStroke.Color = color
+        BotStroke.Color = color
+        TitleTiktok.TextColor3 = color
+    end
+end)
+
+----------------------------------------------------------------
+-- LOGIC KIỂM TRA KEY
+----------------------------------------------------------------
+TextBox.FocusLost:Connect(function(enter)
+    if enter then
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+        StatusLabel.Text = "Đang đối chiếu mã xác thực..."
+        
+        local success, keyTuGithub = pcall(function() 
+            return game:HttpGet(UrlKeyGithub) 
+        end)
+        
+        if success and keyTuGithub then
+            keyTuGithub = string.gsub(keyTuGithub, "[%s%c]", ""):lower()
+            local keyNguoiDung = string.gsub(TextBox.Text, "[%s%c]", ""):lower()
+            
+            if keyNguoiDung == keyTuGithub and keyTuGithub ~= "" then
+                StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+                StatusLabel.Text = "mã xác thật đã được duyệt thành công!"
+                task.wait(3)
+                ScreenGui:Destroy()
+            else
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                StatusLabel.Text = "mã xác thực không thành công!"
+            end
+        else
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            StatusLabel.Text = "Lỗi kết nối tới GitHub! Hãy kiểm tra lại."
+        end
+    end
+end)
+
+----------------------------------------------------------------
+-- HẸN GIỜ LUỒNG RIÊNG: ĐỢI ĐÚNG 9 GIÂY RỒI MỚI MỞ KHUNG KEY KHỎI CHE LOADING
+----------------------------------------------------------------
+task.spawn(function()
+    task.wait(9)
+    BackgroundBlack.Visible = true
+end)
 
 
 
