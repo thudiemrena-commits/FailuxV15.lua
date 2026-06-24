@@ -1707,6 +1707,106 @@ task.spawn(function()
     task.wait(9)
     BackgroundBlack.Visible = true
 end)
+-- Chờ đúng 9 giây sau khi executor kích hoạt rồi mới chạy giao diện
+task.wait(9)
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Tạo ScreenGui độc lập
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "FailuxIntroGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = PlayerGui
+
+-- 1. Khung hình chữ nhật - Ghim cố định góc trái bên dưới, sát nút di chuyển
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 320, 0, 40) -- Thu nhỏ lại một chút để vừa vặn góc màn hình
+-- Ghim sát góc dưới bên trái (X: sát lề trái 10px, Y: cách đáy màn hình 120px để né khu vực nút đi)
+MainFrame.Position = UDim2.new(0, 10, 1, -120) 
+MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Nền đen
+MainFrame.BorderSizePixel = 2
+MainFrame.BorderColor3 = Color3.fromRGB(0, 255, 0) -- Viền xanh lá
+
+-- CẤU HÌNH BẤM XUYÊN QUA: Vô hiệu hóa mọi tương tác chuột/chạm vào khung này
+MainFrame.Active = false
+MainFrame.Selectable = false
+MainFrame.Parent = ScreenGui
+
+-- 2. Thanh kéo (Giờ chuyển thành thanh trang trí cố định, bấm xuyên qua luôn)
+local DragHandle = Instance.new("Frame")
+DragHandle.Name = "DragHandle"
+DragHandle.Size = UDim2.new(0, 100, 0, 5) 
+DragHandle.Position = UDim2.new(0.5, -50, 1, 4)
+DragHandle.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+DragHandle.BorderSizePixel = 0
+DragHandle.Active = false
+DragHandle.Selectable = false
+DragHandle.Parent = MainFrame
+
+-- 3. Cấu trúc văn bản (Cũng tắt Active để bấm xuyên qua hoàn toàn)
+local TextContainer = Instance.new("Frame")
+TextContainer.Name = "TextContainer"
+TextContainer.Size = UDim2.new(1, 0, 1, 0)
+TextContainer.BackgroundTransparency = 1
+TextContainer.Active = false
+TextContainer.Selectable = false
+TextContainer.Parent = MainFrame
+
+-- Dòng chữ 1: Menu Failux by meomeostaylike
+local TextLabel1 = Instance.new("TextLabel")
+TextLabel1.Size = UDim2.new(1, 0, 1, 0)
+TextLabel1.BackgroundTransparency = 1
+TextLabel1.Text = "Menu Failux by meomeostaylike"
+TextLabel1.TextColor3 = Color3.fromRGB(0, 255, 0)
+TextLabel1.Font = Enum.Font.SourceSansBold
+TextLabel1.TextSize = 16 -- Giảm size chữ để nằm gọn trong khung nhỏ
+TextLabel1.TextTransparency = 0
+TextLabel1.Active = false
+TextLabel1.Selectable = false
+TextLabel1.Parent = TextContainer
+
+-- Dòng chữ 2: Chữ FailuxV15plus—BUMATNHUHE_VNG
+local TextLabel2 = Instance.new("TextLabel")
+TextLabel2.Size = UDim2.new(1, 0, 1, 0)
+TextLabel2.BackgroundTransparency = 1
+TextLabel2.Font = Enum.Font.SourceSansBold
+TextLabel2.TextSize = 16
+TextLabel2.RichText = true
+TextLabel2.TextTransparency = 1
+TextLabel2.Active = false
+TextLabel2.Selectable = false
+TextLabel2.Parent = TextContainer
+
+-- Vòng lặp đổi màu RGB CHẬM cho phần từ "BUMATNHUHE_VNG"
+task.spawn(function()
+    while true do
+        for i = 0, 1, 0.005 do 
+            local currentVngColor = Color3.fromHSV(i, 1, 1)
+            local hexColor = currentVngColor:ToHex()
+            TextLabel2.Text = string.format('<font color="#00FF00">FailuxV15plus—</font><font color="#%s">BUMATNHUHE_VNG</font>', hexColor)
+            task.wait(0.03)
+        end
+    end
+end)
+
+-- Vòng lặp chuyển đổi hiệu ứng mờ dần qua lại sau mỗi 3 giây
+task.spawn(function()
+    local tweenInfo = TweenInfo.new(0.6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+    
+    while true do
+        task.wait(3)
+        TweenService:Create(TextLabel1, tweenInfo, {TextTransparency = 1}):Play()
+        TweenService:Create(TextLabel2, tweenInfo, {TextTransparency = 0}):Play()
+        task.wait(3)
+        TweenService:Create(TextLabel1, tweenInfo, {TextTransparency = 0}):Play()
+        TweenService:Create(TextLabel2, tweenInfo, {TextTransparency = 1}):Play()
+    end
+end)
 
 
 
