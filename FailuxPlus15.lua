@@ -1807,7 +1807,7 @@ task.spawn(function()
         TweenService:Create(TextLabel2, tweenInfo, {TextTransparency = 1}):Play()
     end
 end)
--
+
 	
 	
 	
