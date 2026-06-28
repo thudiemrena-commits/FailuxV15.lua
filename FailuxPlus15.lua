@@ -1,4 +1,4 @@
-.-- [[ @THUDIEMRENA V16.12 - FINAL OPTIMIZED - BY MO KI MA ]] --
+-- [[ @THUDIEMRENA V16.12 - FINAL OPTIMIZED - BY MO KI MA ]] --
 local lp = game.Players.LocalPlayer
 local RS = game:GetService("RunService")
 local TS = game:GetService("TweenService")
