@@ -1833,36 +1833,25 @@ end
 local btnFOV = createBtn("FOV: OFF", UDim2.new(0.03, 0, 0.1, 0))
 local btnAim = createBtn("Aim: OFF", UDim2.new(0.52, 0, 0.1, 0))
 
--- ====================================================================
--- [GHÉP Ở ĐÂY]: TỰ ĐỘNG XÓA VÒNG FOV CŨ TRƯỚC KHI TẠO VÒNG MỚI
--- ====================================================================
-if getgenv().MyFOVCircle then
-    pcall(function()
-        getgenv().MyFOVCircle:Remove()
-    end)
-    getgenv().MyFOVCircle = nil
-end
-
--- Cấu hình FOV
-local fovCircle = Drawing.new("Circle")
-fovCircle.Visible = false
-fovCircle.Thickness = 2
-fovCircle.Radius = 250
-fovCircle.Filled = false
-
--- Lưu vào biến toàn cục để lần execute sau biết đường xóa
-getgenv().MyFOVCircle = fovCircle
--- ====================================================================
+-- ==========================================
+-- 1. ĐỔI TÊN BIẾN TẠI ĐÂY (TRÁNH TRÙNG MENU KHÁC)
+-- ==========================================
+local fovCuaMoCoMe = Drawing.new("Circle")
+fovCuaMoCoMe.Visible = false
+fovCuaMoCoMe.Thickness = 2
+fovCuaMoCoMe.Radius = 250
+fovCuaMoCoMe.Filled = false
 
 local FOV_Enabled = false
 local Aim_Enabled = false
 
--- Hiệu ứng Rainbow cho vòng tròn
+-- Hiệu ứng Rainbow
 task.spawn(function()
     local hue = 0
     while true do
         if FOV_Enabled then
-            fovCircle.Color = Color3.fromHSV(hue, 1, 1)
+            -- 2. ĐỔI TÊN Ở KHÚC ĐỔI MÀU
+            fovCuaMoCoMe.Color = Color3.fromHSV(hue, 1, 1)
             hue = (hue + 0.01) % 1
         end
         task.wait(0.05)
@@ -1871,7 +1860,8 @@ end)
 
 btnFOV.MouseButton1Click:Connect(function()
     FOV_Enabled = not FOV_Enabled
-    fovCircle.Visible = FOV_Enabled
+    -- 3. ĐỔI TÊN Ở KHÚC BẬT TẮT NÚT
+    fovCuaMoCoMe.Visible = FOV_Enabled
     btnFOV.Text = FOV_Enabled and "FOV: ON" or "FOV: OFF"
     btnFOV.BackgroundColor3 = FOV_Enabled and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(50, 50, 50)
 end)
@@ -1884,11 +1874,12 @@ end)
 
 -- Logic Aim & Raycast
 RunService.RenderStepped:Connect(function()
-    fovCircle.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
+    -- 4. ĐỔI TÊN Ở KHÚC CẬP NHẬT TÂM VÀ BÁN KÍNH AIM
+    fovCuaMoCoMe.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
     
     if Aim_Enabled then
         local closest = nil
-        local shortestDist = fovCircle.Radius
+        local shortestDist = fovCuaMoCoMe.Radius
         
         for _, p in pairs(game.Players:GetPlayers()) do
             if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
@@ -1899,11 +1890,9 @@ RunService.RenderStepped:Connect(function()
                     local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).Magnitude
                     
                     if dist < shortestDist then
-                        -- Kiểm tra vật cản (Raycast)
                         local ray = Ray.new(camera.CFrame.Position, (head.Position - camera.CFrame.Position).Unit * 500)
                         local hit, pos = workspace:FindPartOnRay(ray, player.Character, false, true)
                         
-                        -- Nếu vật cản chính là đầu của mục tiêu (không bị tường che)
                         if hit and hit:IsDescendantOf(p.Character) then
                             closest = head
                             shortestDist = dist
