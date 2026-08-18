@@ -1833,12 +1833,26 @@ end
 local btnFOV = createBtn("FOV: OFF", UDim2.new(0.03, 0, 0.1, 0))
 local btnAim = createBtn("Aim: OFF", UDim2.new(0.52, 0, 0.1, 0))
 
+-- ====================================================================
+-- [GHÉP Ở ĐÂY]: TỰ ĐỘNG XÓA VÒNG FOV CŨ TRƯỚC KHI TẠO VÒNG MỚI
+-- ====================================================================
+if getgenv().MyFOVCircle then
+    pcall(function()
+        getgenv().MyFOVCircle:Remove()
+    end)
+    getgenv().MyFOVCircle = nil
+end
+
 -- Cấu hình FOV
 local fovCircle = Drawing.new("Circle")
 fovCircle.Visible = false
 fovCircle.Thickness = 2
 fovCircle.Radius = 250
 fovCircle.Filled = false
+
+-- Lưu vào biến toàn cục để lần execute sau biết đường xóa
+getgenv().MyFOVCircle = fovCircle
+-- ====================================================================
 
 local FOV_Enabled = false
 local Aim_Enabled = false
@@ -1904,30 +1918,6 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
-
-
-
-
-                        
-
-                    
-                    
-		
-
-	
-
-
-
-
-
-		
-
-
-
-
-
-
-		
 
 
 
