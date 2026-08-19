@@ -532,6 +532,13 @@ local AimActive = false
 local Connection = nil
 
 -- [[ 1. TẠO DRAWING FOV (VÒNG TRÒN & TÂM NHẮM) ]]
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 0 -- Để 0 cho chắc ăn
+FOVCircle.Color = Color3.fromRGB(255, 0, 0)
+FOVCircle.Filled = false
+FOVCircle.Transparency = 0 -- Cho trong suốt
+FOVCircle.Visible = false -- Quan trọng nhất: chỉnh cái này thành false là nó ẩn đi
+
 local CenterDot = Drawing.new("Circle")
 CenterDot.Radius = 3
 CenterDot.Color = Color3.fromRGB(255, 0, 0)
