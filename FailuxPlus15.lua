@@ -532,13 +532,6 @@ local AimActive = false
 local Connection = nil
 
 -- [[ 1. TẠO DRAWING FOV (VÒNG TRÒN & TÂM NHẮM) ]]
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5
-FOVCircle.Color = Color3.fromRGB(255, 0, 0)
-FOVCircle.Filled = false
-FOVCircle.Transparency = 1
-FOVCircle.Visible = true
-
 local CenterDot = Drawing.new("Circle")
 CenterDot.Radius = 3
 CenterDot.Color = Color3.fromRGB(255, 0, 0)
