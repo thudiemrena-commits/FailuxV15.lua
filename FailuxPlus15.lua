@@ -1810,71 +1810,155 @@ end)
 local player = game.Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
--- Tạo UI
+-- 1. TẠO SCREEN GUI
 local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "system_meomeohub_gui"
 screenGui.ResetOnSpawn = false 
 
-local frame = Instance.new("Frame", screenGui)
-frame.Size = UDim2.new(0.3, 0, 0.15, 0)
-frame.Position = UDim2.new(0.35, 0, 0.8, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+-- 2. TẠO KHUNG CHỨA (ĐÃ CÓ TỌA ĐỘ MẶC ĐỊNH LỆCH 2 PIXEL)
+local CrosshairContainer = Instance.new("Frame", screenGui)
+CrosshairContainer.Name = "CrosshairContainer"
+CrosshairContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+CrosshairContainer.Position = UDim2.new(0.5, 0, 0.5, -2) 
+CrosshairContainer.Size = UDim2.new(0, 300, 0, 100)
+CrosshairContainer.BackgroundTransparency = 1
+CrosshairContainer.Visible = false
 
--- Hàm tạo nút
-local function createBtn(text, pos)
-    local btn = Instance.new("TextButton", frame)
-    btn.Text = text
-    btn.Size = UDim2.new(0.45, 0, 0.8, 0)
-    btn.Position = pos
-    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    return btn
+local Layout = Instance.new("UIListLayout", CrosshairContainer)
+Layout.FillDirection = Enum.FillDirection.Horizontal
+Layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Layout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+local function createPart(txt)
+    local label = Instance.new("TextLabel", CrosshairContainer)
+    label.Size = UDim2.new(0, 100, 0, 100)
+    label.BackgroundTransparency = 1
+    label.Text = txt
+    label.Font = Enum.Font.SourceSansBold
+    label.TextScaled = true
+    label.TextColor3 = Color3.fromRGB(0, 255, 255)
+    return label
 end
 
-local btnFOV = createBtn("FOV: OFF", UDim2.new(0.03, 0, 0.1, 0))
-local btnAim = createBtn("Aim: OFF", UDim2.new(0.52, 0, 0.1, 0))
+createPart("(")
+createPart("+")
+createPart(")")
 
--- Cấu hình FOV
-local fovCircle = Drawing.new("Circle")
-fovCircle.Visible = false
-fovCircle.Thickness = 2
-fovCircle.Radius = 250
-fovCircle.Filled = false
+-- 3. FOV TÀNG HÌNH
+local fovInvisible = Instance.new("Frame", screenGui)
+fovInvisible.Name = "FOV_Invis"
+fovInvisible.AnchorPoint = Vector2.new(0.5, 0.5)
+fovInvisible.Position = UDim2.new(0.5, 0, 0.5, 0)
+fovInvisible.BackgroundTransparency = 1
+fovInvisible.Visible = true
 
 local FOV_Enabled = false
 local Aim_Enabled = false
+local Pos_Enabled = false -- Biến mới cho nút Custom Pos
 
--- Hiệu ứng Rainbow cho vòng tròn
-task.spawn(function()
-    local hue = 0
-    while true do
-        if FOV_Enabled then
-            fovCircle.Color = Color3.fromHSV(hue, 1, 1)
-            hue = (hue + 0.01) % 1
-        end
-        task.wait(0.05)
+-- 4. TẠO UI MENU
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 240, 0, 70)
+frame.Position = UDim2.new(0.35, 0, 0.75, 0)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+frame.BorderSizePixel = 0
+
+local UIStroke = Instance.new("UIStroke", frame)
+UIStroke.Color = Color3.fromRGB(0, 255, 127)
+UIStroke.Thickness = 1.5
+
+-- Thanh kéo Menu
+local dragBar = Instance.new("Frame", frame)
+dragBar.Size = UDim2.new(1, 0, 0, 16)
+dragBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+dragBar.BorderSizePixel = 0
+
+local dragTitle = Instance.new("TextLabel", dragBar)
+dragTitle.Size = UDim2.new(1, -10, 1, 0)
+dragTitle.Position = UDim2.new(0, 5, 0, 0)
+dragTitle.BackgroundTransparency = 1
+dragTitle.Text = "system-meomeohub (TANK SIGHT)"
+dragTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
+dragTitle.Font = Enum.Font.SourceSansBold
+dragTitle.TextSize = 11
+
+-- Logic kéo thả
+local dragging, dragStart, startPos
+dragBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+dragBar.InputEnded:Connect(function() dragging = false end)
+
+-- NÚT BẤM (Căn 3 nút cho đẹp)
+local function createBtn(text, pos)
+    local btn = Instance.new("TextButton", frame)
+    btn.Text = text
+    btn.Size = UDim2.new(0.3, 0, 0.45, 0) -- Giảm size 1 chút để đủ 3 nút
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextSize = 10
+    return btn
+end
+
+local btnPos = createBtn("POS: OFF", UDim2.new(0.02, 0, 0.45, 0))
+local btnFOV = createBtn("TANK: OFF", UDim2.new(0.35, 0, 0.45, 0))
+local btnAim = createBtn("AIM: OFF", UDim2.new(0.68, 0, 0.45, 0))
+
+-- Xử lý nút POS
+btnPos.MouseButton1Click:Connect(function()
+    Pos_Enabled = not Pos_Enabled
+    btnPos.Text = Pos_Enabled and "POS: ON" or "POS: OFF"
+    btnPos.BackgroundColor3 = Pos_Enabled and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(45, 45, 45)
+end)
+
+-- Khi đang bật POS: ON, click vào màn hình sẽ set vị trí
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if Pos_Enabled and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
+        CrosshairContainer.Position = UDim2.fromOffset(input.Position.X, input.Position.Y)
+        -- Tắt chế độ sau khi đặt
+        Pos_Enabled = false
+        btnPos.Text = "POS: OFF"
+        btnPos.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     end
 end)
 
 btnFOV.MouseButton1Click:Connect(function()
     FOV_Enabled = not FOV_Enabled
-    fovCircle.Visible = FOV_Enabled
-    btnFOV.Text = FOV_Enabled and "FOV: ON" or "FOV: OFF"
-    btnFOV.BackgroundColor3 = FOV_Enabled and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(50, 50, 50)
+    CrosshairContainer.Visible = FOV_Enabled
+    btnFOV.Text = FOV_Enabled and "TANK: ON" or "TANK: OFF"
+    btnFOV.BackgroundColor3 = FOV_Enabled and Color3.fromRGB(0, 140, 60) or Color3.fromRGB(45, 45, 45)
 end)
 
 btnAim.MouseButton1Click:Connect(function()
     Aim_Enabled = not Aim_Enabled
-    btnAim.Text = Aim_Enabled and "Aim: ON" or "Aim: OFF"
-    btnAim.BackgroundColor3 = Aim_Enabled and Color3.fromRGB(0, 100, 0) or Color3.fromRGB(50, 50, 50)
+    btnAim.Text = Aim_Enabled and "AIM: ON" or "AIM: OFF"
+    btnAim.BackgroundColor3 = Aim_Enabled and Color3.fromRGB(0, 140, 60) or Color3.fromRGB(45, 45, 45)
 end)
 
--- Logic Aim & Raycast
+-- 5. LOGIC AIMBOT
 RunService.RenderStepped:Connect(function()
-    fovCircle.Position = Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)
-    
+    local fovSize = camera.ViewportSize.Y * 0.5
+    fovInvisible.Size = UDim2.new(0, fovSize, 0, fovSize)
+    local shortestDist = fovSize / 2
+
     if Aim_Enabled then
-        local closest = nil
-        local shortestDist = fovCircle.Radius
+        local targetHead = nil
+        local centerScreen = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
         
         for _, p in pairs(game.Players:GetPlayers()) do
             if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
@@ -1882,16 +1966,12 @@ RunService.RenderStepped:Connect(function()
                 local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
                 
                 if onScreen then
-                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(camera.ViewportSize.X/2, camera.ViewportSize.Y/2)).Magnitude
-                    
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y) - centerScreen).Magnitude
                     if dist < shortestDist then
-                        -- Kiểm tra vật cản (Raycast)
                         local ray = Ray.new(camera.CFrame.Position, (head.Position - camera.CFrame.Position).Unit * 500)
-                        local hit, pos = workspace:FindPartOnRay(ray, player.Character, false, true)
-                        
-                        -- Nếu vật cản chính là đầu của mục tiêu (không bị tường che)
+                        local hit = workspace:FindPartOnRay(ray, player.Character, false, true)
                         if hit and hit:IsDescendantOf(p.Character) then
-                            closest = head
+                            targetHead = head
                             shortestDist = dist
                         end
                     end
@@ -1899,12 +1979,11 @@ RunService.RenderStepped:Connect(function()
             end
         end
         
-        if closest then
-            camera.CFrame = CFrame.new(camera.CFrame.Position, closest.Position)
+        if targetHead then
+            camera.CFrame = CFrame.lookAt(camera.CFrame.Position, targetHead.Position)
         end
     end
 end)
-
 
 
 
